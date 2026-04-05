@@ -287,8 +287,6 @@ async def setup_faq(interaction: discord.Interaction):
 @app_commands.default_permissions(administrator=True)
 async def setup_referral(interaction: discord.Interaction):
     desc = (
-        "Expand the network. Unlock exclusive privileges.\n"
-        "Invite trusted clients to **SWAGSALES** and be rewarded for your loyalty.\n\n"
         "───────────────\n"
         "✧ **Milestones**\n"
         "> 🥉 **5 Invites:** `Loyalty` Role\n"
@@ -302,7 +300,6 @@ async def setup_referral(interaction: discord.Interaction):
     )
 
     embed = discord.Embed(description=desc, color=EMBED_COLOR, timestamp=discord.utils.utcnow())
-    embed.set_author(name="S W A G S A L E S  |  Ambassador Program")
     embed.set_footer(text="swagsales © 2026 • network")
     
     if THUMBNAIL_URL: embed.set_thumbnail(url=THUMBNAIL_URL)
