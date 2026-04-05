@@ -143,7 +143,7 @@ class TicketControlView(discord.ui.View):
         button.disabled = True
         await interaction.response.edit_message(view=self)
         
-        # 1. Phrases dynamiques pour l'Auto-Vouch
+        # Phrases dynamiques pour l'Auto-Vouch
         farewells = [
             "We hope your transaction was flawlessly executed. If you have a moment, please leave a review using `/vouch` in our server.",
             "Thank you for your trust. Your feedback is highly appreciated—consider typing `/vouch` to let others know about your experience.",
@@ -164,7 +164,7 @@ class TicketControlView(discord.ui.View):
         except:
             pass 
         
-        # 2. Transcript envoyé dans les logs
+        # Transcript envoyé dans les logs
         transcript_content = f"--- Final Encrypted Transcript for {interaction.channel.name} ---\n\n"
         async for msg in interaction.channel.history(limit=None, oldest_first=True):
             time_formatted = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -214,7 +214,6 @@ class TicketModal(discord.ui.Modal):
         channel_name = f"{self.ticket_type.lower()}-{interaction.user.name}"
         ticket_channel = await guild.create_text_channel(name=channel_name, category=category, overwrites=overwrites, topic=str(interaction.user.id))
         
-        # Phrases d'accueil dynamiques pour faire plus humain
         greetings = [
             f"Welcome to your private desk, {interaction.user.mention}. A specialist will attend to you momentarily.",
             f"Greetings {interaction.user.mention}. Our staff has been notified and will review your request soon.",
@@ -283,6 +282,45 @@ async def setup_faq(interaction: discord.Interaction):
     embed.set_author(name="S W A G S A L E S  |  F.A.Q")
     await interaction.channel.send(embed=embed, view=FAQView())
     await interaction.response.send_message("✧ FAQ panel deployed.", ephemeral=True)
+
+@bot.tree.command(name="setup_referral", description="Generate the Ambassador Program panel")
+@app_commands.default_permissions(administrator=True)
+async def setup_referral(interaction: discord.Interaction):
+    desc = (
+        "Expand the network. Unlock exclusive privileges.\n"
+        "Invite trusted clients to **SWAGSALES** and be rewarded for your loyalty.\n\n"
+        "───────────────\n"
+        "✧ **Milestones**\n"
+        "> 🥉 **5 Invites:** `Loyalty` Role\n"
+        "> 🥈 **15 Invites:** `5% Off Next Order` + `Affiliate` Role\n"
+        "> 🥇 **30 Invites:** `10% Off Next Order` + `Ambassador` Role\n"
+        "> 💎 **50+ Invites:** `$15 Store Credit` + `Priority Access`\n\n"
+        "───────────────\n"
+        "✧ **Guidelines**\n"
+        "-# ╰ Fake accounts and alt-farming will result in a permanent blacklist.\n"
+        "-# ╰ Invites are only counted if the user stays in the server."
+    )
+
+    embed = discord.Embed(description=desc, color=EMBED_COLOR, timestamp=discord.utils.utcnow())
+    embed.set_author(name="S W A G S A L E S  |  Ambassador Program")
+    embed.set_footer(text="swagsales © 2026 • network")
+    
+    if THUMBNAIL_URL: embed.set_thumbnail(url=THUMBNAIL_URL)
+
+    view = discord.ui.View()
+    btn = discord.ui.Button(label="Claim Privileges", style=discord.ButtonStyle.secondary, emoji="🥂")
+    
+    async def btn_callback(btn_interaction: discord.Interaction):
+        await btn_interaction.response.send_message(
+            "✧ **To claim your privileges:**\n"
+            "Please navigate to the Support Center and open a **Questions** ticket. A representative will verify your invites.", 
+            ephemeral=True
+        )
+    btn.callback = btn_callback
+    view.add_item(btn)
+
+    await interaction.channel.send(embed=embed, view=view)
+    await interaction.response.send_message("✧ Referral panel deployed.", ephemeral=True)
 
 @bot.tree.command(name="prices", description="Display current luxury pricing list")
 async def prices(interaction: discord.Interaction):
