@@ -20,7 +20,7 @@ VOUCH_CHANNEL_ID = 1470425558075572256
 VERIFIED_ROLE_ID = 123456789012345678 # <--- ID DU RÔLE À DONNER
 RULES_IMAGE_URL = "https://media.discordapp.net/attachments/1459700315380125717/1459711191369781279/IMG_7356.jpg"
 # Émoji Animé Argenté Scintillant (ou le tien)
-VERIFY_EMOJI_ANIMATED = "<a:silver_glitter:1203273188168273930>" 
+VERIFY_EMOJI_ANIMATED = "<a:vamp:1459717983810355231>" 
 # L'émoji brut pour la réaction (obligatoire sans <a:..>)
 VERIFY_EMOJI_RAW = "✨" 
 
