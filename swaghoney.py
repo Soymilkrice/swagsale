@@ -22,7 +22,7 @@ RULES_IMAGE_URL = "https://media.discordapp.net/attachments/1459700315380125717/
 # Émoji Animé Argenté Scintillant (ou le tien)
 VERIFY_EMOJI_ANIMATED = "<a:vamp:1490384484112138353>" 
 # L'émoji brut pour la réaction (obligatoire sans <a:..>)
-VERIFY_EMOJI_RAW = "✨" 
+VERIFY_EMOJI_RAW = ":vamp:1490384484112138353" 
 
 # Payment Information
 PAYPAL_INFO = "paypal.me/toncompte"
