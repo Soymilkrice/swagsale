@@ -27,7 +27,6 @@ REVOLUT_TAG = "@YourRevolutTag"
 
 # Prestige Finishes
 TOS_TEXT = "✧ All sales are final. No refunds once goods are delivered.\n✧ We are not responsible for any game-side restrictions or bans.\n✧ Charging back will result in an immediate blacklist from our services."
-THUMBNAIL_URL = "https://cdn-icons-png.flaticon.com/512/561/561127.png" 
 # ------------------------------
 
 intents = discord.Intents.default()
