@@ -19,7 +19,10 @@ VOUCH_CHANNEL_ID = 1470425558075572256
 
 VERIFIED_ROLE_ID = 123456789012345678 # <--- ID DU RÔLE À DONNER
 RULES_IMAGE_URL = "https://media.discordapp.net/attachments/1459700315380125717/1459711191369781279/IMG_7356.jpg"
-VERIFY_EMOJI = "✨" 
+# Émoji Animé Argenté Scintillant (ou le tien)
+VERIFY_EMOJI_ANIMATED = "<a:silver_glitter:1203273188168273930>" 
+# L'émoji brut pour la réaction (obligatoire sans <a:..>)
+VERIFY_EMOJI_RAW = "✨" 
 
 # Payment Information
 PAYPAL_INFO = "paypal.me/toncompte"
@@ -30,6 +33,7 @@ REVOLUT_TAG = "@YourRevolutTag"
 # Prestige Finishes
 TOS_TEXT = "✧ All sales are final. No refunds once goods are delivered.\n✧ We are not responsible for any game-side restrictions or bans.\n✧ Charging back will result in an immediate blacklist from our services."
 THUMBNAIL_URL = "URL_DE_TON_LOGO_S" # <--- TON LOGO S ICI
+EMBED_COLOR = 0x2b2d31 # La couleur sombre de la barre latérale
 # ------------------------------
 
 intents = discord.Intents.default()
@@ -43,7 +47,8 @@ bot = commands.Bot(command_prefix="!", intents=intents)
 async def on_raw_reaction_add(payload):
     if payload.user_id == bot.user.id:
         return
-    if str(payload.emoji) == VERIFY_EMOJI:
+    # On vérifie l'émoji brut pour la réaction
+    if str(payload.emoji) == VERIFY_EMOJI_RAW:
         guild = bot.get_guild(payload.guild_id)
         role = guild.get_role(VERIFIED_ROLE_ID)
         member = guild.get_member(payload.user_id)
@@ -88,7 +93,7 @@ class TicketControlView(discord.ui.View):
         file = discord.File(buffer, filename=f"archive-{interaction.channel.name}.txt")
         log_channel = bot.get_channel(LOG_CHANNEL_ID)
         if log_channel:
-            log_embed = discord.Embed(title="Archived Record", description=f"**Ticket:** {interaction.channel.name}", color=0x2b2d31)
+            log_embed = discord.Embed(title="Archived Record", description=f"**Ticket:** {interaction.channel.name}", color=EMBED_COLOR)
             await log_channel.send(embed=log_embed, file=file)
         await interaction.followup.send("✧ Archive secured. Closing...")
         await asyncio.sleep(5)
@@ -106,15 +111,11 @@ class TicketModal(discord.ui.Modal):
         guild = interaction.guild
         category = guild.get_channel(TICKET_CATEGORY_ID)
         staff_role = guild.get_role(STAFF_ROLE_ID)
-        overwrites = {
-            guild.default_role: discord.PermissionOverwrite(view_channel=False),
-            interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True),
-            staff_role: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True)
-        }
+        overwrites = { guild.default_role: discord.PermissionOverwrite(view_channel=False), interaction.user: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True), staff_role: discord.PermissionOverwrite(view_channel=True, send_messages=True, read_message_history=True) }
         channel_name = f"{self.ticket_type.lower()}-{interaction.user.name}"
         ticket_channel = await guild.create_text_channel(name=channel_name, category=category, overwrites=overwrites)
         
-        embed = discord.Embed(description=f"Welcome {interaction.user.mention}. Representative arriving shortly.\n───────────────", color=0x2b2d31)
+        embed = discord.Embed(description=f"Welcome {interaction.user.mention}. Representative arriving shortly.\n───────────────", color=EMBED_COLOR)
         embed.set_author(name=f"S W A G S A L E S  |  {self.ticket_type.upper()}")
         if THUMBNAIL_URL: embed.set_thumbnail(url=THUMBNAIL_URL)
         
@@ -129,14 +130,25 @@ class TicketModal(discord.ui.Modal):
         await interaction.response.send_message(f"✧ Ticket established: {ticket_channel.mention}", ephemeral=True)
 
 # --- SLASH COMMANDS SETUP ---
-@bot.tree.command(name="setup_verify", description="Post rules and verification reaction")
+@bot.tree.command(name="setup_verify", description="Post rules and verification reaction (Prestige Line)")
 @app_commands.default_permissions(administrator=True)
 async def setup_verify(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
-    await interaction.channel.send(content=RULES_IMAGE_URL) # Image d'abord
-    embed = discord.Embed(description="✧ **Rules**\n\n╰ no nsfw, gore, self harm\n╰ no harassing or being weird\n╰ no advertising\n╰ no scamming, doxxing\n╰ be respectful\n\n" + f"{VERIFY_EMOJI} **react below to gain access**", color=0x2b2d31)
-    msg = await interaction.channel.send(embed=embed)
-    await msg.add_reaction(VERIFY_EMOJI) # Réaction ensuite
+    
+    # 1. Embed IMAGE (avec la barre latérale)
+    embed_image = discord.Embed(color=EMBED_COLOR)
+    embed_image.set_image(url=RULES_IMAGE_URL)
+    await interaction.channel.send(embed=embed_image)
+    
+    # 2. Embed TEXTE (avec la MÊME barre latérale)
+    # On utilise l'émoji animé dans le texte
+    desc = f"✧ **Rules**\n\n╰ no nsfw, gore, self harm\n╰ no harassing or being weird\n╰ no advertising\n╰ no scamming, doxxing\n╰ be respectful\n\n{VERIFY_EMOJI_ANIMATED} **react below to gain access**"
+    embed_rules = discord.Embed(description=desc, color=EMBED_COLOR)
+    msg_rules = await interaction.channel.send(embed=embed_rules)
+    
+    # 3. Réaction (on utilise l'émoji RAW pour la réaction)
+    await msg_rules.add_reaction(VERIFY_EMOJI_RAW)
+    
     await interaction.followup.send("✧ Verification established.", ephemeral=True)
 
 @bot.tree.command(name="setup_panel", description="Post support panel")
@@ -144,7 +156,7 @@ async def setup_verify(interaction: discord.Interaction):
 async def setup_panel(interaction: discord.Interaction):
     tos_formatted = "\n".join([f"-# {line}" for line in TOS_TEXT.split('\n')])
     desc = f"-# Select a category.\n✧ **Buying**\n\n✧ **Selling**\n\n✧ **Business**\n\n✧ **Questions**\n\n───────────────\n**✧ Terms of Service**\n{tos_formatted}"
-    embed = discord.Embed(description=desc, color=0x2b2d31)
+    embed = discord.Embed(description=desc, color=EMBED_COLOR)
     embed.set_author(name="S W A G S A L E S  |  Support Center")
     channel = bot.get_channel(PANEL_CHANNEL_ID)
     if channel:
@@ -158,7 +170,7 @@ async def vouch(interaction: discord.Interaction, member: discord.Member, stars:
     vouch_channel = bot.get_channel(VOUCH_CHANNEL_ID)
     if vouch_channel:
         rating = ("✦" * stars.value) + ("✧" * (5 - stars.value))
-        embed = discord.Embed(description=f"✧ **Feedback**\n\n> {comment}", color=0x2b2d31)
+        embed = discord.Embed(description=f"✧ **Feedback**\n\n> {comment}", color=EMBED_COLOR)
         embed.set_author(name=f"Vouch for {member.display_name}")
         embed.add_field(name="Rating", value=rating, inline=True)
         if image: embed.set_image(url=image.url)
@@ -167,11 +179,11 @@ async def vouch(interaction: discord.Interaction, member: discord.Member, stars:
 
 @bot.tree.command(name="paypal", description="PayPal info")
 async def paypal(interaction: discord.Interaction):
-    await interaction.response.send_message(embed=discord.Embed(title="✧ PayPal", description=f"`{PAYPAL_INFO}`", color=0x2b2d31))
+    await interaction.response.send_message(embed=discord.Embed(title="✧ PayPal", description=f"`{PAYPAL_INFO}`", color=EMBED_COLOR))
 
 @bot.tree.command(name="revolut", description="Revolut info")
 async def revolut(interaction: discord.Interaction):
-    await interaction.response.send_message(embed=discord.Embed(title="✧ Revolut", description=f"`{REVOLUT_TAG}`", color=0x2b2d31))
+    await interaction.response.send_message(embed=discord.Embed(title="✧ Revolut", description=f"`{REVOLUT_TAG}`", color=EMBED_COLOR))
 
 # --- VIEWS ---
 class TicketSelect(discord.ui.Select):
