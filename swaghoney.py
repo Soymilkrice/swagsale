@@ -214,15 +214,7 @@ class TicketModal(discord.ui.Modal):
         channel_name = f"{self.ticket_type.lower()}-{interaction.user.name}"
         ticket_channel = await guild.create_text_channel(name=channel_name, category=category, overwrites=overwrites, topic=str(interaction.user.id))
         
-        greetings = [
-            f"Welcome to your private desk, {interaction.user.mention}. A specialist will attend to you momentarily.",
-            f"Greetings {interaction.user.mention}. Our staff has been notified and will review your request soon.",
-            f"Hello {interaction.user.mention}. Please bear with us while an agent is assigned to your case.",
-            f"Welcome {interaction.user.mention}. A representative is being dispatched to assist you."
-        ]
-        
-        embed = discord.Embed(description=f"{random.choice(greetings)}\n───────────────", color=EMBED_COLOR, timestamp=discord.utils.utcnow())
-        embed.set_author(name=f"S W A G S A L E S  |  {self.ticket_type.upper()}")
+        embed = discord.Embed(description="───────────────", color=EMBED_COLOR, timestamp=discord.utils.utcnow())
         if THUMBNAIL_URL: embed.set_thumbnail(url=THUMBNAIL_URL)
         
         for item in self.children:
@@ -258,15 +250,13 @@ async def setup_verify(interaction: discord.Interaction):
 @app_commands.default_permissions(administrator=True)
 async def setup_panel(interaction: discord.Interaction):
     tos_formatted = "\n".join([f"-# ╰ {line}" for line in TOS_TEXT.split('\n')])
-    desc = (f"Please select the appropriate category from the menu below to open a private desk with our staff.\n\n"
-            f"✧ **Buying**\n-# Browse and purchase our premium selection.\n\n"
+    desc = (f"✧ **Buying**\n-# Browse and purchase our premium selection.\n\n"
             f"✧ **Selling**\n-# Offer your goods for a secure and fast exchange.\n\n"
             f"✧ **Business**\n-# Propose partnerships or promotional inquiries.\n\n"
             f"✧ **Questions**\n-# Get assistance from our dedicated support team.\n\n"
             f"───────────────\n**✧ Service Agreement**\n{tos_formatted}")
     
     embed = discord.Embed(description=desc, color=EMBED_COLOR, timestamp=discord.utils.utcnow())
-    embed.set_author(name="S W A G S A L E S  |  Support Center")
     embed.set_footer(text="swagsales © 2026 • Premium Services")
     if BANNER_URL: embed.set_image(url=BANNER_URL)
     
@@ -379,7 +369,7 @@ class TicketView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(TicketSelect())
 
-@bot.event
+@event
 async def on_ready():
     change_status.start()
     bot.add_view(TicketView())
