@@ -32,7 +32,7 @@ REVOLUT_TAG = "@YourRevolutTag"
 
 # Finitions Prestige
 TOS_TEXT = "✧ All sales are final. No refunds once goods are delivered.\n✧ We are not responsible for bans.\n✧ Charging back = immediate blacklist."
-THUMBNAIL_URL = "" # Mets ici l'URL de ton logo "S" si tu l'as
+THUMBNAIL_URL = "" 
 EMBED_COLOR = 0x2b2d31 
 # ------------------------------
 
@@ -42,7 +42,7 @@ intents.members = True
 intents.reactions = True
 bot = commands.Bot(command_prefix="!", intents=intents)
 
-# --- SYSTÈME DE RÉACTION (VÉRIFICATION) ---
+# --- SYSTÈME DE RÉACTION (VÉRIFICATION AVEC CONFIRMATION) ---
 @bot.event
 async def on_raw_reaction_add(payload):
     if payload.user_id == bot.user.id:
@@ -58,7 +58,20 @@ async def on_raw_reaction_add(payload):
         
         if role and member:
             try:
+                # On ajoute le rôle
                 await member.add_roles(role)
+                
+                # On envoie la confirmation en message privé
+                embed_confirm = discord.Embed(
+                    description=f"✧ Access granted to **{guild.name}**. Welcome aboard!",
+                    color=EMBED_COLOR
+                )
+                try:
+                    await member.send(embed=embed_confirm)
+                except discord.Forbidden:
+                    # Si l'utilisateur a bloqué les MPs, on ignore
+                    pass
+                    
             except discord.Forbidden:
                 print("✧ Erreur: Le rôle du Bot doit être AU-DESSUS du rôle Membre.")
             except Exception as e:
@@ -68,7 +81,6 @@ async def on_raw_reaction_add(payload):
 class TicketControlView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
-        self.staff_notified = False 
         
     @discord.ui.button(label="Claim Ticket", style=discord.ButtonStyle.success, custom_id="claim_ticket_btn")
     async def claim_ticket(self, interaction: discord.Interaction, button: discord.ui.Button):
@@ -118,7 +130,7 @@ class TicketModal(discord.ui.Modal):
         await channel.send(content=f"{interaction.user.mention} | <@&{STAFF_ROLE_ID}>", embed=embed, view=TicketControlView())
         await interaction.response.send_message(f"✧ Ticket created: {channel.mention}", ephemeral=True)
 
-# --- SLASH COMMANDS ---
+# --- SETUP COMMANDS ---
 @bot.tree.command(name="setup_verify", description="Post rules and verification (Prestige Line)")
 @app_commands.default_permissions(administrator=True)
 async def setup_verify(interaction: discord.Interaction):
