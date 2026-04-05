@@ -1,2 +1,2 @@
-discord.py
+swaghoney.py
 python-dotenv
