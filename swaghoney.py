@@ -1,9 +1,10 @@
 import discord
-from discord.ext import commands
+from discord.ext import commands, tasks
 from discord import app_commands
 import asyncio
 import io
 import os
+import itertools
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -23,15 +24,15 @@ RULES_IMAGE_URL = "https://media.discordapp.net/attachments/1459700315380125717/
 VERIFY_EMOJI_ANIMATED = "<a:vamp:1490384484112138353>" 
 VERIFY_EMOJI_ID = 1490384484112138353 
 
-# Informations de paiement
+# Informations de paiement & Esthétique
 PAYPAL_INFO = "paypal.me/toncompte"
 LTC_ADDRESS = "LTC_ADDRESS_HERE"
 CASHAPP_TAG = "$YourCashAppTag"
 REVOLUT_TAG = "@YourRevolutTag"
 
-# Finitions Prestige
 TOS_TEXT = "✧ All sales are final. No refunds once goods are delivered.\n✧ We are not responsible for any game-side restrictions or bans.\n✧ Charging back will result in an immediate blacklist from our services."
 THUMBNAIL_URL = "" # URL de ton logo S
+BANNER_URL = "" # URL d'une grande image horizontale pour habiller le bas de tes panels
 EMBED_COLOR = 0x2b2d31 
 # ------------------------------
 
@@ -40,6 +41,13 @@ intents.message_content = True
 intents.members = True
 intents.reactions = True
 bot = commands.Bot(command_prefix="!", intents=intents)
+
+# --- STATUT ANIMÉ (ROTATING PRESENCE) ---
+status_cycle = itertools.cycle(["Support Center", "Premium Services", "150+ Happy Customers"])
+
+@tasks.loop(seconds=15)
+async def change_status():
+    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=next(status_cycle)))
 
 # --- SYSTÈME DE RÉACTION (VÉRIFICATION) ---
 @bot.event
@@ -68,7 +76,30 @@ async def on_raw_reaction_add(payload):
             except Exception as e:
                 print(f"Erreur Role: {e}")
 
-# --- TICKET CONTROLS (BOUTONS DANS LE TICKET) ---
+# --- FAQ INTERACTIVE ---
+class FAQSelect(discord.ui.Select):
+    def __init__(self):
+        options = [
+            discord.SelectOption(label="Payment Methods", description="How can I pay?", emoji="💳"),
+            discord.SelectOption(label="Delivery Time", description="When will I get my items?", emoji="⏳"),
+            discord.SelectOption(label="Refund Policy", description="Can I get a refund?", emoji="🛑")
+        ]
+        super().__init__(placeholder="Select a question...", custom_id="faq_select", options=options)
+    
+    async def callback(self, interaction: discord.Interaction):
+        answers = {
+            "Payment Methods": f"✧ We accept PayPal (`{PAYPAL_INFO}`), Revolut (`{REVOLUT_TAG}`), CashApp and Crypto (LTC).",
+            "Delivery Time": "✧ Delivery is usually instant once payment is confirmed by our staff.",
+            "Refund Policy": "✧ As stated in our TOS, all sales are final. No refunds once delivered."
+        }
+        await interaction.response.send_message(answers[self.values[0]], ephemeral=True)
+
+class FAQView(discord.ui.View):
+    def __init__(self):
+        super().__init__(timeout=None)
+        self.add_item(FAQSelect())
+
+# --- TICKET CONTROLS (AVEC AUTO-VOUCH & TRANSCRIPT) ---
 class TicketControlView(discord.ui.View):
     def __init__(self):
         super().__init__(timeout=None)
@@ -110,7 +141,21 @@ class TicketControlView(discord.ui.View):
         button.disabled = True
         await interaction.response.edit_message(view=self)
         
-        # Transcript de fermeture envoyé dans les logs
+        # 1. Envoi du DM de relance (Auto-Vouch) au client
+        try:
+            creator_id = int(interaction.channel.topic) # On récupère l'ID caché dans le topic
+            creator = interaction.guild.get_member(creator_id)
+            if creator:
+                dm_embed = discord.Embed(
+                    title="Thank you for choosing SWAGSALES!",
+                    description="✧ We hope your transaction was smooth. Please consider leaving a review in our server by typing `/vouch`.\n\n*Have a great day!*",
+                    color=EMBED_COLOR
+                )
+                await creator.send(embed=dm_embed)
+        except:
+            pass # Si le DM est bloqué, on continue
+        
+        # 2. Transcript envoyé dans les logs
         transcript_content = f"--- Final Transcript for {interaction.channel.name} ---\n\n"
         async for msg in interaction.channel.history(limit=None, oldest_first=True):
             time_formatted = msg.created_at.strftime("%Y-%m-%d %H:%M:%S")
@@ -120,7 +165,7 @@ class TicketControlView(discord.ui.View):
         
         log_channel = bot.get_channel(LOG_CHANNEL_ID)
         if log_channel:
-            log_embed = discord.Embed(title="Archived Record", description=f"**Reference:** {interaction.channel.name}\n**Authorized by:** {interaction.user.mention}", color=EMBED_COLOR)
+            log_embed = discord.Embed(title="Archived Record", description=f"**Reference:** {interaction.channel.name}\n**Authorized by:** {interaction.user.mention}", color=EMBED_COLOR, timestamp=discord.utils.utcnow())
             log_embed.set_footer(text="swagsales • secure archive")
             await log_channel.send(embed=log_embed, file=file)
             
@@ -158,9 +203,10 @@ class TicketModal(discord.ui.Modal):
         }
         
         channel_name = f"{self.ticket_type.lower()}-{interaction.user.name}"
-        ticket_channel = await guild.create_text_channel(name=channel_name, category=category, overwrites=overwrites)
+        # On sauvegarde l'ID du créateur dans le "topic" du salon pour l'Auto-Vouch plus tard
+        ticket_channel = await guild.create_text_channel(name=channel_name, category=category, overwrites=overwrites, topic=str(interaction.user.id))
         
-        embed = discord.Embed(description=f"Welcome {interaction.user.mention}. A representative will be with you shortly.\n───────────────", color=EMBED_COLOR)
+        embed = discord.Embed(description=f"Welcome {interaction.user.mention}. A representative will be with you shortly.\n───────────────", color=EMBED_COLOR, timestamp=discord.utils.utcnow())
         embed.set_author(name=f"S W A G S A L E S  |  {self.ticket_type.upper()}")
         if THUMBNAIL_URL: embed.set_thumbnail(url=THUMBNAIL_URL)
         
@@ -172,7 +218,6 @@ class TicketModal(discord.ui.Modal):
         embed.add_field(name="\u200b", value=f"───────────────\n**✧ Terms of Service**\n{tos_formatted}", inline=False)
         embed.set_footer(text="swagsales © 2026 • Secure Transaction Desk")
         
-        # Ping staff à l'ouverture
         await ticket_channel.send(content=f"{interaction.user.mention} | <@&{STAFF_ROLE_ID}>", embed=embed, view=TicketControlView())
         await interaction.response.send_message(f"✧ Request established: {ticket_channel.mention}", ephemeral=True)
 
@@ -182,20 +227,16 @@ class TicketModal(discord.ui.Modal):
 async def setup_verify(interaction: discord.Interaction):
     await interaction.response.defer(ephemeral=True)
     
-    # Image
     embed_image = discord.Embed(color=EMBED_COLOR)
     embed_image.set_image(url=RULES_IMAGE_URL)
     await interaction.channel.send(embed=embed_image)
     
-    # Texte
     desc = f"✧ **Rules**\n\n╰ no nsfw, gore, self harm\n╰ no harassing or being weird\n╰ no advertising\n╰ no scamming, doxxing\n╰ be respectful\n\n{VERIFY_EMOJI_ANIMATED} **react below to gain access**"
     embed_rules = discord.Embed(description=desc, color=EMBED_COLOR)
     msg_rules = await interaction.channel.send(embed=embed_rules)
     
-    # Réaction
     emoji = bot.get_emoji(VERIFY_EMOJI_ID)
     await msg_rules.add_reaction(emoji or "✅")
-    
     await interaction.followup.send("✧ Verification system established.", ephemeral=True)
 
 @bot.tree.command(name="setup_panel", description="Generate support panel")
@@ -203,14 +244,29 @@ async def setup_verify(interaction: discord.Interaction):
 async def setup_panel(interaction: discord.Interaction):
     tos_formatted = "\n".join([f"-# {line}" for line in TOS_TEXT.split('\n')])
     desc = (f"-# Select a category.\n✧ **Buying**\n*Buy goods.*\n\n✧ **Selling**\n*Sell goods.*\n\n✧ **Business**\n*Partnerships.*\n\n✧ **Questions**\n*Support.*\n\n───────────────\n**✧ Terms of Service**\n{tos_formatted}")
-    embed = discord.Embed(description=desc, color=EMBED_COLOR)
+    embed = discord.Embed(description=desc, color=EMBED_COLOR, timestamp=discord.utils.utcnow())
     embed.set_author(name="S W A G S A L E S  |  Support Center")
     embed.set_footer(text="swagsales © 2026 • Premium Services")
+    if BANNER_URL: embed.set_image(url=BANNER_URL)
     
     channel = bot.get_channel(PANEL_CHANNEL_ID)
     if channel:
         await channel.send(embed=embed, view=TicketView())
         await interaction.response.send_message("✧ Support panel established.", ephemeral=True)
+
+@bot.tree.command(name="setup_faq", description="Generate Interactive FAQ panel")
+@app_commands.default_permissions(administrator=True)
+async def setup_faq(interaction: discord.Interaction):
+    embed = discord.Embed(description="✧ Have a question? Check our interactive FAQ below before opening a ticket.", color=EMBED_COLOR)
+    embed.set_author(name="S W A G S A L E S  |  F.A.Q")
+    await interaction.channel.send(embed=embed, view=FAQView())
+    await interaction.response.send_message("✧ FAQ established.", ephemeral=True)
+
+@bot.tree.command(name="prices", description="Display current pricing list")
+async def prices(interaction: discord.Interaction):
+    embed = discord.Embed(title="✧ Current Price List", description="**Service 1:** $10\n**Service 2:** $25\n**Service 3:** $50\n\n*Prices are subject to change. Open a ticket to buy.*", color=EMBED_COLOR)
+    embed.set_footer(text="swagsales • pricing")
+    await interaction.response.send_message(embed=embed)
 
 @bot.tree.command(name="vouch", description="Submit feedback")
 @app_commands.describe(member="Staff", stars="Rating", comment="Comment")
@@ -219,7 +275,7 @@ async def vouch(interaction: discord.Interaction, member: discord.Member, stars:
     vouch_channel = bot.get_channel(VOUCH_CHANNEL_ID)
     if vouch_channel:
         rating = ("✦" * stars.value) + ("✧" * (5 - stars.value))
-        embed = discord.Embed(description=f"✧ **Feedback**\n\n> {comment}", color=EMBED_COLOR)
+        embed = discord.Embed(description=f"✧ **Feedback**\n\n> {comment}", color=EMBED_COLOR, timestamp=discord.utils.utcnow())
         embed.set_author(name=f"Vouch for {member.display_name}")
         embed.add_field(name="Rating", value=rating, inline=True)
         embed.set_footer(text="swagsales • reputation system")
@@ -256,9 +312,10 @@ class TicketView(discord.ui.View):
 
 @bot.event
 async def on_ready():
-    await bot.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name="Support Center"))
+    change_status.start() # Lancement du statut animé
     bot.add_view(TicketView())
-    bot.add_view(TicketControlView()) 
+    bot.add_view(TicketControlView())
+    bot.add_view(FAQView()) 
     await bot.tree.sync()
     print(f'✧ {bot.user} is active and fully loaded.')
 
