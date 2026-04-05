@@ -214,6 +214,7 @@ class TicketModal(discord.ui.Modal):
         channel_name = f"{self.ticket_type.lower()}-{interaction.user.name}"
         ticket_channel = await guild.create_text_channel(name=channel_name, category=category, overwrites=overwrites, topic=str(interaction.user.id))
         
+        # Le ticket embed minimaliste sans phrase d'accueil ni "SWAGSALES"
         embed = discord.Embed(description="───────────────", color=EMBED_COLOR, timestamp=discord.utils.utcnow())
         if THUMBNAIL_URL: embed.set_thumbnail(url=THUMBNAIL_URL)
         
@@ -250,6 +251,7 @@ async def setup_verify(interaction: discord.Interaction):
 @app_commands.default_permissions(administrator=True)
 async def setup_panel(interaction: discord.Interaction):
     tos_formatted = "\n".join([f"-# ╰ {line}" for line in TOS_TEXT.split('\n')])
+    # Panel minimaliste
     desc = (f"✧ **Buying**\n-# Browse and purchase our premium selection.\n\n"
             f"✧ **Selling**\n-# Offer your goods for a secure and fast exchange.\n\n"
             f"✧ **Business**\n-# Propose partnerships or promotional inquiries.\n\n"
@@ -276,6 +278,7 @@ async def setup_faq(interaction: discord.Interaction):
 @bot.tree.command(name="setup_referral", description="Generate the Ambassador Program panel")
 @app_commands.default_permissions(administrator=True)
 async def setup_referral(interaction: discord.Interaction):
+    # Referral minimaliste
     desc = (
         "───────────────\n"
         "✧ **Milestones**\n"
@@ -369,7 +372,8 @@ class TicketView(discord.ui.View):
         super().__init__(timeout=None)
         self.add_item(TicketSelect())
 
-@event
+# C'est ici que l'erreur était ! C'est bien @bot.event
+@bot.event
 async def on_ready():
     change_status.start()
     bot.add_view(TicketView())
